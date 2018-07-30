@@ -18,102 +18,146 @@ struct queue
 	struct queue *next;
 };
 
-int queue_size(struct queue *root)
+struct queue_new
 {
-	struct queue *duplicate = root;
-	int number = 0;
-	while (duplicate != NULL)
+	struct queue *element;
+	int size;
+};
+
+struct queue_new *queue_create()
+{
+	struct  queue_new *root;
+	root = malloc(sizeof(*root));
+	if (root != NULL)
 	{
-		number++;
-		duplicate = duplicate->next;
+		root->size = 0;
+		root->element = NULL;
 	}
-	return number;
+	return root;
 }
 
-bool queue_empty(struct queue *root)
+int queue_size(struct queue_new *root)
 {
-	if (root == NULL) return true;
+	return root->size;
+}
+
+bool queue_empty(struct queue_new *root)
+{
+	if (root->size == 0) return true;
 	else return false;
 }
 
-bool queue_full(struct queue *root)
+bool queue_full(struct queue_new *root)
 {
-	if (queue_size(root) == quantity) return true;
+	if (root->size == quantity) return true;
 	else return false;
 }
 
-void dequeue(struct queue **root)
+void dequeue(struct queue_new *root)
 {
-	if (*root == NULL) printf("delete_root: we have not root\n");
+	if (root->size == 0) printf("dequeue: we have not root\n");
 	else
 	{
-		struct queue *temp = *root;
-		*root = (*root)->next;
+		struct queue *temp = root->element;
+		root->element = temp->next;
 		free(temp);
+		root->size--;
 	}
 }
 
-void enqueue(struct queue **root, char message[], int priority)
+void enqueue(struct queue_new *root, char message[], int priority)
 {
-	struct queue *duplicate, *duplicate_past, *temp, *temp_add_past = NULL, *temp_add_now = NULL, *temp_del = NULL;
+	struct queue *duplicate, *duplicate_past, *temp, *temp_add = NULL, *temp_del = NULL;
 	int number = 0;
 	bool check = false;
-	duplicate = *root;
-	duplicate_past = NULL;
-	if (!queue_empty(*root))
+	if (root->size != 0)
 	{
-		while (duplicate != NULL)
+		if (root->size != quantity)
 		{
-			number++;
-			if (duplicate->priority < priority && check == false)
+			duplicate = root->element;
+			duplicate_past = NULL;
+			while (duplicate != NULL && duplicate->priority >= priority)
 			{
-				temp_add_past = duplicate_past;
-				temp_add_now = duplicate;
-				check = true;
+				duplicate_past = duplicate;
+				duplicate = duplicate->next;
 			}
-			if (number == quantity) temp_del = duplicate_past;
-			duplicate_past = duplicate;
-			duplicate = duplicate->next;
-		}
-		if (number == quantity && check == true)
-		{
-			if (temp_del->next == temp_add_now) temp_add_now = NULL;
-			temp = temp_del->next;
-			temp_del->next = NULL;
-			free(temp);
-		}
-		else if (number != quantity && check == false)
-		{
-			temp_add_past = duplicate_past;
-			temp_add_now = duplicate;
-			check = true;
-		}
-		if (check == true)
-		{
 			temp = (struct queue*)malloc(sizeof(struct queue));
 			temp->priority = priority;
-			strcpy(temp->message, message);
-			temp->next = NULL;
-			temp->next = temp_add_now;
-			if (temp_add_past != NULL) temp_add_past->next = temp;
-			else *root = temp;
+			strncpy(temp->message, message, sizeof(temp->message) - 1);
+			temp->message[sizeof(temp->message) - 1] = '\0';
+			temp->next = duplicate;
+			if (duplicate_past != NULL)
+			{
+				duplicate_past->next = temp;
+			}
+			else
+			{
+				root->element = temp;
+			}
+			root->size++;
+		}
+		else
+		{
+			duplicate = root->element;
+			duplicate_past = NULL;
+			while (duplicate != NULL)
+			{
+				if (duplicate->priority < priority && check == false)
+				{
+					temp_add = duplicate_past;
+					check = true;
+				}
+				if (duplicate->next == NULL) temp_del = duplicate_past;
+				duplicate_past = duplicate;
+				duplicate = duplicate->next;
+			}
+			if (check == true)
+			{
+				temp = (struct queue*)malloc(sizeof(struct queue));
+				temp->priority = priority;
+				strncpy(temp->message, message, sizeof(temp->message) - 1);
+				temp->message[sizeof(temp->message) - 1] = '\0';
+				temp->next = NULL;
+				if (temp_add == temp_del)
+				{
+					free(temp_del->next);
+					temp_del->next = temp;
+				}
+				else
+					if (temp_add == NULL)
+					{
+						free(temp_del->next);
+						temp_del->next = NULL;
+						temp->next = root->element;
+						root->element = temp;
+					}
+					else
+					{
+						free(temp_del->next);
+						temp_del->next = NULL;
+						temp->next = temp_add->next;
+						temp_add->next = temp;
+					}
+			}
 		}
 	}
 	else
 	{
 		temp = (struct queue*)malloc(sizeof(struct queue));
 		temp->priority = priority;
-		strcpy(temp->message, message);
+		strncpy(temp->message, message, sizeof(temp->message) - 1);
+		temp->message[sizeof(temp->message) - 1] = '\0';
 		temp->next = NULL;
-		*root = temp;
+		root->element = temp;
+		root->size++;
 	}
 }
 
-void queue_print(struct queue *root)
+void queue_print(struct queue_new *root)
 {
 	struct queue *duplicate;
-	duplicate = root;
-	if (root == NULL) printf("turn_print: we have not root");
+	duplicate = root->element;
+	if (root->size == 0) printf("queue_print: we have not root\n");
 	else
 		do {
 			printf("priority %d: %s\n", duplicate->priority, duplicate->message);
@@ -123,15 +167,14 @@ void queue_print(struct queue *root)
 
 int main()
 {
-	struct queue *root = NULL;
-	enqueue(&root, "message 1", LOW);
-	enqueue(&root, "message 2", HIGH);
-	dequeue(&root);
-	enqueue(&root, "message 3", HIGH);
-	enqueue(&root, "message 4", HIGHEST);
-	enqueue(&root, "message 5", LOWEST);
-	enqueue(&root, "message 6", LOW);
-	enqueue(&root, "message 8", LOW);
+	struct queue_new *root = queue_create();
+	enqueue(root, "message 1", LOW);
+	enqueue(root, "message 2", HIGH);
+	dequeue(root);
+	enqueue(root, "message 3", LOWEST);
+	enqueue(root, "message 4", HIGH);
+	enqueue(root, "message 5", HIGH);
+	enqueue(root, "message 6", HIGHEST);
 	queue_print(root);
 	if (queue_empty(root)) printf("Queue is empty\n");
 	else printf("Queue is not empty\n");
